@@ -1,64 +1,50 @@
-# Day 23 — Đèn nào bật trước? · Operating Dashboard
+# Day 23 — Operating Dashboard · Đèn nào bật trước?
+## Trợ lý AI Tiếp nhận và Phân tầng Triệu chứng Y tế (Vinmec Clinical Triage)
 
-> **Bài cá nhân.** Mỗi học viên tự làm và tự nộp repo của mình (xem [SUBMISSION.md](SUBMISSION.md)).
-> **Không phải bài lập trình.** Không cần cài gì, không cần API key — chỉ cần Markdown và số liệu của sản phẩm bạn.
+- **Học viên:** Ninh Quang Minh
+- **Mã học viên (MSSV):** 2A202602432
+- **Lớp:** K4 — Track 1 (L34A)
+- **Sản phẩm:** Trợ lý AI Tiếp nhận và Phân tầng Triệu chứng Y tế (Vinmec Clinical Triage & Patient Intake)
+- **Đối tác triển khai:** Hệ thống Y tế Vinmec (7 bệnh viện và 3 phòng khám đa khoa)
+- **Ngày cập nhật:** 09/10/2026
 
-Đến giờ bạn đã có mô hình tài chính (LTV, CAC, payback, NPV…) và Cost/Job của sản phẩm. Những con số đó là **bảng điểm**: chỉ biết đúng sai sau nhiều tháng. Hôm nay bạn dựng **bảng điều khiển**: vài chỉ số **báo trước** cho mô hình loại của bạn, mỗi chỉ số có ngưỡng 🟢🟡🔴 có lý do, và **luật viết sẵn** phải làm gì (và cấm làm gì) khi đèn đỏ.
+---
 
-## Mục tiêu học tập
+## 1. Câu chốt loại mô hình (Model Statement)
 
-Sau bài này bạn làm được:
+> **Chúng tôi là B2B2C vì tiền đến từ Hệ thống Y tế Vinmec (chi trả theo mô hình Hybrid: $300 phí nền duy trì hạ tầng/tháng/cơ sở + $0,79/ca triage hoàn thành), người dùng thật là bệnh nhân hoặc thân nhân của Vinmec, và chúng tôi chạm trực tiếp người dùng cuối qua menu "Sơ loại triệu chứng 24/7" trên Zalo Official Account Vinmec và mục Tiếp nhận khám trên ứng dụng MyVinmec.**
 
-1. Xác định đúng sản phẩm mình là **B2C, B2B hay B2B2C** theo thực tế hôm nay, và biết "đèn bật trước" của loại đó.
-2. Xếp chỉ số vào 3 tầng **Leading · Operating · Lagging** và chỉ ra mỗi đèn báo sớm báo trước cho đèn nào.
-3. Đặt ngưỡng có nguồn: benchmark có ngày kiểm tra **[BM]**, suy ngược từ mô hình của bạn **[MH]**, hoặc tự đo baseline **[TB]**.
-4. Viết 5 luật quyết định dạng **NẾU – TRONG – (VÀ) – THÌ – KHÔNG THÌ**, trong đó ít nhất 2 luật bảo bạn **dừng** một việc.
-5. Đặt 3 cổng gác ngày 30/60/90 (GO · FIX · PIVOT · KILL) và kill criteria.
+### Căn cứ 3 câu hỏi thực tế (HANDBOOK §2.5):
+1. **Ai trả tiền cho bạn?** Doanh nghiệp y tế — Hệ thống Y tế Vinmec (ký kết qua COO & Giám đốc Chuyên môn Lâm sàng, thanh toán từ ngân sách Vận hành & Tiếp nhận bệnh nhân).
+2. **Ai dùng sản phẩm?** Bệnh nhân & Thân nhân bệnh nhân (khách hàng của người trả tiền).
+3. **Bạn có chạm được người dùng cuối không?** Có, chạm trực tiếp và lưu trữ phiên hội thoại phân tầng ESI sơ bộ trên giao diện Zalo OA và ứng dụng MyVinmec.
 
-**Đầu ra:** một `Operating Dashboard` **1 trang** + phụ lục ≤1 trang cho các phép tính [MH].
+---
 
-## Chuẩn bị
+## 2. Thông số kinh tế đơn vị & Mô hình tài chính (Căn cứ từ Day 22)
 
-| Cần có | Dùng để |
-|---|---|
-| Số liệu mô hình tài chính của bạn: ARPU, gross margin, CAC, payback mục tiêu, runway | Suy ngưỡng [MH] |
-| Value Metric và **Cost/Job** của sản phẩm (chi phí AI cho một việc) | Đèn chi phí AI, ngưỡng [MH] |
-| Tài khoản GitHub + trình xem Markdown (VS Code, GitHub web…) | Làm và nộp bài |
-| Một chatbot AI bất kỳ (tuỳ chọn) | Chạy prompt phản biện ở [HANDBOOK §5](HANDBOOK.md#5-prompts-cho-ai-english-only) |
+Các chỉ số cơ sở được trích xuất trực tiếp từ mô hình tài chính chuẩn tại `MinhNQ_Day22_model.xlsx`:
 
-Chưa có mô hình tài chính hoặc Cost/Job? Bạn vẫn đọc và làm được Trạm 1–2, nhưng **không đạt** Trạm 3 vì cần ít nhất 2 ngưỡng [MH] tính từ số của chính bạn.
+| Chỉ số | Giá trị | Căn cứ & Ý nghĩa |
+| :--- | :---: | :--- |
+| **Định nghĩa 1 Job** | 1 ca triage hoàn thành | Bệnh nhân nhận khuyến nghị phân tầng ESI sơ bộ, hướng dẫn đặt chuyên khoa hoặc điều dưỡng tiếp nhận an toàn. |
+| **Giá bán đề xuất** | **$0,7900** (~20.540 ₫) | Bội số định giá 3,48× Cost/Job; tương đương benchmark Outcome-based y tế quốc tế (Zendesk AI $1,50; Intercom Fin $0,99). |
+| **Cost / Job (COGS)** | **$0,2271** (~5.905 ₫) | Bao gồm chi phí LLM Claude Haiku 4.5 có cache ($0,0185), Infra bảo mật y tế ($0,008), chi phí nhân sự điều dưỡng trực HITL ($0,1915), retry 7% ($0,0017). |
+| **Tỷ lệ Containment vận hành** | **78,00%** | 78% ca nhẹ/vừa AI tự xử lý hoàn tất; 22% ca cờ đỏ chuyển tiếp điều dưỡng trực. |
+| **Breakeven Containment** | **70,29%** | Ngưỡng containment tối thiểu để duy trì Gross Margin ≥ 60%. |
+| **Gross Margin (GM%)** | **71,25%** | Biên lợi nhuận gộp đạt chuẩn Vertical AI (65–75% Bessemer Cloud Index 2024). |
+| **ARPU cơ sở** | **$790 / tháng** | $300 phí hạ tầng + $490 phí 1.000 ca triage hoàn thành tại 1 cơ sở. |
+| **Ngân sách CAC tối đa** | **$10.132 / cơ sở** | ARPU ($790) × GM (71,25%) × Payback 18 tháng (phân khúc Mid-market). |
+| **Kênh GTM chính** | Partner-Led (Vinmec) | Nhúng vào hệ sinh thái có sẵn của Vinmec, không dùng Sales-Led riêng lẻ (CAC sales-led $32.000 > ngân sách cho phép). |
 
-## Bắt đầu trong 3 phút
+---
 
-1. Tạo repo **mới** trên GitHub tên `K4-L3-DAY23-HoVaTen-MSSV-AIProductGrowth` (quy tắc ở [SUBMISSION.md](SUBMISSION.md)).
-2. Copy 2 file mẫu trong [`templates/`](templates/) vào repo của bạn:
-   - [`worksheet.md`](templates/worksheet.md) — nháp làm việc cho Trạm 1–4 (thẻ đèn đầy đủ, phép tính [MH]).
-   - [`dashboard.md`](templates/dashboard.md) — bản 1 trang cuối cùng (Trạm 5).
-3. Đọc [HANDBOOK §2](HANDBOOK.md#2-hệ-chẩn-đoán) trong 10 phút, rồi làm lần lượt theo [CHECKPOINTS.md](CHECKPOINTS.md).
+## 3. Cấu trúc bộ tài liệu nộp bài
 
-## Thời lượng — 120 phút, 5 trạm
-
-| Trạm | Việc | Thời gian |
-|---|---|---|
-| 1 | Chốt loại mô hình & lấy bảng đèn | 15' |
-| 2 | Dựng cây 3 tầng (6–8 thẻ đèn) | 25' |
-| 3 | **Đặt ngưỡng** — mỗi đèn có nguồn và lý do | 30' ⭐ |
-| 4 | **Viết 5 luật quyết định** — ≥2 luật dừng | 30' ⭐ |
-| 5 | Cổng gác 90 ngày & ráp dashboard 1 trang | 20' |
-
-Bấm giờ từng trạm. Hết giờ thì sang trạm sau, quay lại hoàn thiện ở Trạm 5.
-
-## Tài liệu trong repo
-
-| File | Đọc khi nào |
-|---|---|
-| [HANDBOOK.md](HANDBOOK.md) | Kiến thức nền, 3 bảng đèn B2C/B2B/B2B2C, prompt AI, nguồn số liệu. **Chỉ đọc phần §3 của loại mình.** |
-| [CHECKPOINTS.md](CHECKPOINTS.md) | Hướng dẫn từng trạm: làm gì, ra sản phẩm gì, tự kiểm tra thế nào |
-| [SUBMISSION.md](SUBMISSION.md) | Tên repo, file phải nộp, deadline, checklist trước khi nộp |
-| [RUBRIC.md](RUBRIC.md) | Tiêu chí chấm 100 điểm và các điều kiện mất điểm |
-| [RULES.md](RULES.md) | Quy định dùng AI, sao chép, nộp muộn, bảo mật số liệu |
-
-> **Ba câu cần nhớ nếu quên hết mọi thứ khác:**
-> **B2C** — đèn bật trước là đường cong retention có phẳng không.
-> **B2B** — đèn bật trước là time-to-first-value.
-> **B2B2C** — đèn bật trước là partner activation. Ký được không phải là thắng.
+```text
+K4-L3-DAY23-NinhQuangMinh-2A202602432-AIProductGrowth/
+├── README.md        # Họ tên, MSSV, tên sản phẩm, 1 câu chốt loại mô hình & số liệu cơ sở
+├── worksheet.md     # Trạm 1–4: Bảng đèn ✅/🔧/❌, thẻ đèn chi tiết, ngưỡng [BM]/[MH]/[TB], 3 phép tính [MH], 5 luật quyết định
+├── dashboard.md     # Trạm 5: Operating Dashboard vừa đúng 1 trang A4
+└── dashboard.pdf    # Bản in chuẩn 2 trang (Trang 1: Dashboard; Trang 2: Phụ lục phép tính [MH])
+```
